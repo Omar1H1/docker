@@ -42,6 +42,17 @@ jobs:
         run: |
           docker build -t registry.nocturlab.fr/ohamad/rust_api:latest .
           docker push registry.nocturlab.fr/ohamad/rust_api:latest
+      
+      - name: Execute remote SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USER}}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            docker compose pull
+            docker compose up -d 
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
