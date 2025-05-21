@@ -1,0 +1,60 @@
+name: Build Rust Binary and Publish Docker Image
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: nightly
+          override: true
+
+      - name: Build the Rust project
+        run: cargo build --release
+
+      - name: Create Dockerfile for image build
+        run: |
+          echo 'FROM ubuntu' > Dockerfile
+          echo 'WORKDIR /workspaces' >> Dockerfile
+          echo 'COPY ./target/release/shop_bin ./shop_bin' >> Dockerfile
+          echo 'CMD ["./shop_bin"]' >> Dockerfile
+
+      - name: Log in to registry.nocturlab.fr
+        uses: docker/login-action@v3
+        with:
+          registry: registry.nocturlab.fr
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push Docker image
+        run: |
+          docker build -t registry.nocturlab.fr/ohamad/rust_api:latest .
+          docker push registry.nocturlab.fr/ohamad/rust_api:latest
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Rust binary to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./target/release/shop_bin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
