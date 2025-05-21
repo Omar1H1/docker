@@ -1,0 +1,41 @@
+services:
+
+  postgres:
+    image: postgres:14
+    environment:
+        POSTGRES_USER: postgres
+        POSTGRES_PASSWORD: postgres
+        POSTGRES_DB: app
+
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - backend
+
+  rust_api:
+    image: registry.nocturlab.fr/ohamad/rust_api
+    networks:
+        - backend
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: postgres:5432
+      POSTGRES_DB: app
+      HOST: 0.0.0.0
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.rust_api.rule=HOST(`omarrust.nocturlab.fr`)
+      - traefik.http.services.rust_api.loadbalancer.server.port=80
+    depends_on:
+      - postgres
+    ports:
+      - 8080:8080
+
+volumes:
+  pgdata:
+
+networks:
+  backend:
+  traefik:
+    external: true
+    name: traefik_default
